@@ -211,7 +211,10 @@ master_file_def: MASTER_LOG_FILE_SYM EQ TEXT_STRING_sys_nonewline
 opt_channel: %empty
 | FOR_SYM CHANNEL_SYM TEXT_STRING_sys_nonewline
 
-create_table_stmt: CREATE TABLE_SYM opt_if_not_exists table_ident '(' table_element_list ')' opt_create_table_options_etc
+create_table_stmt: CREATE opt_temporary TABLE_SYM opt_if_not_exists table_ident '(' table_element_list ')' opt_create_table_options_etc
+| CREATE opt_temporary TABLE_SYM opt_if_not_exists table_ident opt_create_table_options_etc
+| CREATE opt_temporary TABLE_SYM opt_if_not_exists table_ident LIKE table_ident
+| CREATE opt_temporary TABLE_SYM opt_if_not_exists table_ident '(' LIKE table_ident ')'
 
 create_role_stmt: CREATE ROLE_SYM opt_if_not_exists role_list
 
