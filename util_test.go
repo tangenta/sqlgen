@@ -3,8 +3,6 @@ package sqlgen
 import (
 	"bufio"
 	"bytes"
-	"os"
-	"path/filepath"
 	"testing"
 )
 
@@ -14,12 +12,8 @@ func TestBuildConfigFile(t *testing.T) {
 		t.Error(err)
 	}
 	prodMap := buildProdMap(p)
-	output := filepath.Join(os.TempDir(), "temp.txt")
+	output := "create_table_config.txt"
 	err = buildConfigFile("create_table_stmt", prodMap, output)
-	if err != nil {
-		t.Error(err)
-	}
-	err = os.Remove(output)
 	if err != nil {
 		t.Error(err)
 	}

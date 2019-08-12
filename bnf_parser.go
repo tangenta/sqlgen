@@ -369,7 +369,7 @@ yynewstate:
 		}
 	case 7:
 		{
-			parser.yyVAL.item = 0
+			parser.yyVAL.item = 1
 		}
 	case 8:
 		{

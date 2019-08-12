@@ -94,7 +94,7 @@ Body:
 
 NumberOpt:
 	{
-		$$ = 0
+		$$ = 1
 	}
 |	LeftBr identifier RightBr
 	{

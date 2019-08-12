@@ -22,14 +22,19 @@ func (p *Production) String() string {
 	sb.WriteString(": ")
 	firstBody := p.bodyList[0]
 	sb.WriteString(strings.Join(firstBody.seq, " "))
-	writeOptNum(&sb, firstBody.randomFactor)
+
+	if _, isLit := literal(firstBody.seq[0]); !isLit {
+		writeOptNum(&sb, firstBody.randomFactor)
+	}
 
 	for i := 1; i < len(p.bodyList); i++ {
 		body := p.bodyList[i]
 		sb.WriteString("\n")
 		sb.WriteString("| ")
 		sb.WriteString(strings.Join(body.seq, " "))
-		writeOptNum(&sb, body.randomFactor)
+		if _, isLit := literal(firstBody.seq[0]); !isLit {
+			writeOptNum(&sb, firstBody.randomFactor)
+		}
 	}
 
 	sb.WriteString("\n")

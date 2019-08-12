@@ -12,6 +12,8 @@ func TestRandomSQL(t *testing.T) {
 		t.Error(err)
 	}
 	ctx := buildContext(prods)
-	ss := randomSQL("create_table_stmt", ctx)
-	fmt.Println(strings.Join(ss, " "))
+	for i := 0; i < 10; i++ {
+		ss := RandomSQLStr("create_table_stmt", ctx)
+		fmt.Println(strings.Join(ss, " "))
+	}
 }

@@ -2,6 +2,7 @@ package sqlgen
 
 import (
 	"fmt"
+	"github.com/pingcap/log"
 	"math/rand"
 	"strings"
 	"time"
@@ -53,7 +54,7 @@ func buildContext(productions []*Production) (ctx *Context) {
 	ctx.randConfig.replacer.add("column_def", constStrFn("a int"))
 	ctx.randConfig.replacer.add("opt_temporary", constStrFn(""))
 	ctx.randConfig.replacer.add("bit_expr", constStrFn("3"))
-	//ctx.randConfig.replacer.add("opt_temporary", func()string{ return randomSQL("%empty", nil, ctx)[0]})
+	//ctx.randConfig.replacer.add("opt_temporary", func()string{ return randomSQLStr("%empty", nil, ctx)[0]})
 	return
 }
 
@@ -61,9 +62,20 @@ func constStrFn(str string) func() string {
 	return func() string { return str }
 }
 
+
+func RandomSQLStr(productionName string, ctx *Context) []string {
+	counter := make(map[string]int)
+	defer func() {
+		for key, count := range counter {
+			ctx.productionMap[key].maxLoop += count
+		}
+	}()
+	return randomSQLStr(productionName, ctx, counter)
+}
+
 var nothing []string
 
-func randomSQL(productionName string, ctx *Context) []string {
+func randomSQLStr(productionName string, ctx *Context, counter map[string]int) []string {
 	cfg := ctx.randConfig
 	if cfg.replacer.contains(productionName) {
 		return []string{cfg.replacer.run(productionName)}
@@ -74,9 +86,11 @@ func randomSQL(productionName string, ctx *Context) []string {
 		panic(fmt.Sprintf("Production '%s' not found", productionName))
 	}
 	production.maxLoop -= 1
+	counter[productionName] += 1
 
 	seqs := filterMaxLoopAndZeroChance(production.bodyList, ctx.productionMap)
 	if len(seqs) == 0 {
+		log.Debug("exiting from " + productionName)
 		return nothing
 	}
 	seqs = randomize(seqs)
@@ -89,7 +103,7 @@ func randomSQL(productionName string, ctx *Context) []string {
 					sql = append(sql, literalStr)
 				}
 			} else {
-				fragment := randomSQL(item, ctx)
+				fragment := RandomSQLStr(item, ctx)
 				if len(fragment) == 0 {
 					containsException = true
 					break

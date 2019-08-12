@@ -65,11 +65,7 @@ func breadthFirstSearch(prodName string, prodMap map[string]*Production, visitor
 		if !ok {
 			return nil, fmt.Errorf("%v not found", name)
 		}
-		if len(visitors) != 0 {
-			for _, v := range visitors {
-				v(prod)
-			}
-		}
+
 		if _, contains := resultSet[name]; !contains {
 			resultSet[name] = struct{}{}
 			for _, body := range prod.bodyList {
@@ -77,6 +73,11 @@ func breadthFirstSearch(prodName string, prodMap map[string]*Production, visitor
 					if _, isLit := literal(s); !isLit {
 						pendingSet = append(pendingSet, s)
 					}
+				}
+			}
+			if len(visitors) != 0 {
+				for _, v := range visitors {
+					v(prod)
 				}
 			}
 		}
