@@ -3,9 +3,27 @@ package sqlgen
 import (
 	"bufio"
 	"bytes"
-	"fmt"
+	"os"
+	"path/filepath"
 	"testing"
 )
+
+func TestBuildConfigFile(t *testing.T) {
+	p, err := parseYacc("mysql80_bnf_complete.txt")
+	if err != nil {
+		t.Error(err)
+	}
+	prodMap := buildProdMap(p)
+	output := filepath.Join(os.TempDir(), "temp.txt")
+	err = buildConfigFile("create_table_stmt", prodMap, output)
+	if err != nil {
+		t.Error(err)
+	}
+	err = os.Remove(output)
+	if err != nil {
+		t.Error(err)
+	}
+}
 
 func TestBreadthFirstSearch(t *testing.T) {
 	p, err := parseYacc("mysql80_bnf_complete.txt")
@@ -13,17 +31,21 @@ func TestBreadthFirstSearch(t *testing.T) {
 		t.Error(err)
 	}
 	prodMap := buildProdMap(p)
-	rs, err := breadthFirstSearch(prodMap, "create_table_stmt")
+	rs, err := breadthFirstSearch("create_table_stmt", prodMap)
 	if err != nil {
 		t.Error(err)
 	}
-	fmt.Println(len(p))
-	fmt.Println(len(rs))
+	if len(p) == len(rs) || len(rs) == 0 {
+		t.Errorf("wrong length, origin: %d, pruned: %d", len(p), len(rs))
+	}
 }
 
 func TestParseYacc(t *testing.T) {
 	p, err := parseYacc("mysql80_bnf_complete.txt")
-	fmt.Printf("%v %v", p, err)
+	if err != nil {
+		t.Errorf("%v %v", p, err)
+	}
+
 }
 
 func TestProdSplitter(t *testing.T) {
@@ -32,19 +54,23 @@ func TestProdSplitter(t *testing.T) {
 
 prepare: PREPARE_SYM ident FROM prepare_src`))
 	res := splitProdStr(buf)
-	for _, v := range res{
-		fmt.Println(v)
+
+	expected := []string{"deallocate_or_drop: DEALLOCATE_SYM\n| DROP\n", "prepare: PREPARE_SYM ident FROM prepare_src"}
+	for i, v := range res {
+		if v != expected[i] {
+			t.Errorf("expect: '%s', get: '%s'", expected[i], v)
+		}
 	}
 }
 
 func TestIsWhitespace(t *testing.T) {
 	if !isWhitespace("\t \n") {
-		t.Fail()
+		t.Error()
 	}
 	if isWhitespace("  t  ") {
-		t.Fail()
+		t.Error()
 	}
 	if !isWhitespace("\n  \t  ") {
-		t.Fail()
+		t.Error()
 	}
 }

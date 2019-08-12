@@ -6,7 +6,7 @@ import (
 )
 
 func TestParser(t *testing.T) {
-	parser := New()
+	parser := NewParser()
 	bnf := `simple_statement[3]: alter_database_stmt test [5]
 | alter_event_stmt
 | alter_function_stmt
@@ -21,17 +21,19 @@ func TestParser(t *testing.T) {
 }
 
 func TestParser2(t *testing.T) {
-	parser := New()
+	parser := NewParser()
 	bnf := `create_table_stmt: CREATE opt_temporary TABLE_SYM opt_if_not_exists table_ident '(' table_element_list ')' opt_create_table_options_etc
 | CREATE opt_temporary TABLE_SYM opt_if_not_exists table_ident opt_create_table_options_etc
 | CREATE opt_temporary TABLE_SYM opt_if_not_exists table_ident LIKE table_ident
 | CREATE opt_temporary TABLE_SYM opt_if_not_exists table_ident '(' LIKE table_ident ')'`
-	prod, _, _ := parser.Parse(bnf)
-	fmt.Printf("%v", prod)
+	_, _, err := parser.Parse(bnf)
+	if err != nil {
+		t.Error(err)
+	}
 }
 
 func TestProductionString(t *testing.T) {
-	parser := New()
+	parser := NewParser()
 	bnf := `simple_statement[3]: alter_database_stmt test [5]
 | alter_event_stmt
 | alter_function_stmt

@@ -4,15 +4,32 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"sort"
 	"strings"
 	"unicode"
 )
 
-//func buildConfigFile(prodName string, prodMap map[string]*Production) string {
-//	var res string
-//
-//}
+func buildConfigFile(prodName string, prodMap map[string]*Production, filePath string) error {
+	oFile, err := os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
+	if err != nil {
+		return err
+	}
+	_, writeErr := oFile.WriteString(convertOrigin(prodName, prodMap))
+	if writeErr != nil {
+		return writeErr
+	}
+	return nil
+}
+
+func convertOrigin(prodName string, prodMap map[string]*Production) string {
+	var sb strings.Builder
+	visitor := func(p *Production) {
+		sb.WriteString(p.String())
+		sb.WriteString("\n")
+	}
+	_, _ = breadthFirstSearch(prodName, prodMap, visitor)
+
+	return sb.String()
+}
 
 func buildProdMap(prods []*Production) map[string]*Production {
 	ret := make(map[string]*Production)
@@ -22,7 +39,22 @@ func buildProdMap(prods []*Production) map[string]*Production {
 	return ret
 }
 
-func breadthFirstSearch(prodMap map[string]*Production, prodName string) (map[string]struct{}, error) {
+func checkProductionMap(productionMap map[string]Production) {
+	for _, production := range productionMap {
+		for _, seqs := range production.bodyList {
+			for _, seq := range seqs.seq {
+				if _, isLiteral := literal(seq); isLiteral {
+					continue
+				}
+				if _, exist := productionMap[seq]; !exist {
+					panic(fmt.Sprintf("Production '%s' not found", seq))
+				}
+			}
+		}
+	}
+}
+
+func breadthFirstSearch(prodName string, prodMap map[string]*Production, visitors ...func(*Production)) (map[string]struct{}, error) {
 	resultSet := map[string]struct{}{}
 	pendingSet := []string{prodName}
 
@@ -33,10 +65,15 @@ func breadthFirstSearch(prodMap map[string]*Production, prodName string) (map[st
 		if !ok {
 			return nil, fmt.Errorf("%v not found", name)
 		}
+		if len(visitors) != 0 {
+			for _, v := range visitors {
+				v(prod)
+			}
+		}
 		if _, contains := resultSet[name]; !contains {
 			resultSet[name] = struct{}{}
 			for _, body := range prod.bodyList {
-				for _, s := range body.seq{
+				for _, s := range body.seq {
 					if _, isLit := literal(s); !isLit {
 						pendingSet = append(pendingSet, s)
 					}
@@ -45,21 +82,6 @@ func breadthFirstSearch(prodMap map[string]*Production, prodName string) (map[st
 		}
 	}
 	return resultSet, nil
-}
-
-func union(map1 map[string]struct{}, map2 map[string]struct{}) map[string]struct{} {
-	for key, value := range map2 {
-		map1[key] = value
-	}
-	return map1
-}
-
-func binSearch(sortedProds []*Production, prodName string) *Production {
-	idx := sort.Search(len(sortedProds), func(i int) bool { return sortedProds[i].head >= prodName})
-	if idx < len(sortedProds) && sortedProds[idx].head == prodName {
-		return sortedProds[idx]
-	}
-	return nil
 }
 
 func parseYacc(yaccFilePath string) ([]*Production, error) {
@@ -73,7 +95,7 @@ func parseYacc(yaccFilePath string) ([]*Production, error) {
 }
 
 func parseProdStr(prodStrs []string) ([]*Production, error) {
-	bnfParser := New()
+	bnfParser := NewParser()
 	var ret []*Production
 	for _, p := range prodStrs {
 		r, _, err := bnfParser.Parse(p)

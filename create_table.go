@@ -1,56 +1,20 @@
 package sqlgen
 
 import (
-	"bufio"
 	"fmt"
-	"github.com/pingcap/parser"
 	"math/rand"
-	"os"
 	"strings"
 	"time"
-
-	"github.com/pingcap/parser/compatibility_reporter/yacc_parser"
-	_ "github.com/pingcap/tidb/types/parser_driver"
 )
 
 type Context struct {
-	productionMap map[string]yacc_parser.Production
-	tidbParser    *parser.Parser
+	productionMap map[string]*Production
+	tidbParser    *Parser
 	randConfig    *RandConfig
 }
 
-func (c *Context) Clone() Context {
-	rc := c.randConfig.Clone()
-	return Context{
-		productionMap: c.productionMap,
-		tidbParser:    c.tidbParser,
-		randConfig:    &rc,
-	}
-}
-
 type RandConfig struct {
-	maxLoopback       int
-	loopBackWhiteList map[string]struct{}
-	// The production name or literal that contains strBlackList is skipped.
-	strBlackList map[string]struct{}
-	replacer     *Replacer
-}
-
-func (r *RandConfig) Clone() RandConfig {
-	re := r.replacer.Clone()
-	return RandConfig{
-		maxLoopback:       r.maxLoopback,
-		loopBackWhiteList: copySet(r.loopBackWhiteList),
-		strBlackList:      copySet(r.strBlackList),
-		replacer:          &re,
-	}
-}
-func copySet(oldMap map[string]struct{}) map[string]struct{} {
-	newMap := make(map[string]struct{}, len(oldMap))
-	for k, v := range oldMap {
-		newMap[k] = v
-	}
-	return newMap
+	replacer *Replacer
 }
 
 type Replacer struct {
@@ -77,31 +41,13 @@ func (r *Replacer) run(str string) string {
 	}
 	return fn()
 }
-func (r *Replacer) Clone() Replacer {
-	newMap := make(map[string]func() string, len(r.s))
-	for k, v := range r.s {
-		newMap[k] = v
-	}
-	return Replacer{s: newMap}
-}
 
-func buildContext() (ctx *Context) {
-	var skippingSymbols = []string{
-		"LIKE",
-		"table_constraint_def",
-		"opt_references",
-		"subquery",
-		"PARAM_MARKER",
-	}
-
+func buildContext(productions []*Production) (ctx *Context) {
 	ctx = &Context{
-		productionMap: initProductionMap(parseProductions()),
-		tidbParser:    parser.New(),
+		productionMap: buildProdMap(productions),
+		tidbParser:    NewParser(),
 		randConfig: &RandConfig{
-			maxLoopback:       2,
-			loopBackWhiteList: buildStringSet(),
-			strBlackList:      buildStringSet(skippingSymbols...),
-			replacer:          &Replacer{},
+			replacer: &Replacer{},
 		},
 	}
 	ctx.randConfig.replacer.add("column_def", constStrFn("a int"))
@@ -115,73 +61,21 @@ func constStrFn(str string) func() string {
 	return func() string { return str }
 }
 
-func buildStringSet(args ...string) map[string]struct{} {
-	result := make(map[string]struct{}, len(args))
-	for _, v := range args {
-		result[v] = struct{}{}
-	}
-	return result
-}
-
-func parseProductions() []yacc_parser.Production {
-	bnfs := []string{"mysql80_bnf_complete.txt", "mysql80_custom.txt", "mysql80_lexical.txt"}
-	var allProductions []yacc_parser.Production
-	for _, bnf := range bnfs {
-		bnfFile, err := os.Open(bnf)
-		if err != nil {
-			panic(fmt.Sprintf("File '%s' open failure", bnf))
-		}
-		productions := yacc_parser.Parse(yacc_parser.Tokenize(bufio.NewReader(bnfFile)))
-		allProductions = append(allProductions, productions...)
-	}
-	return allProductions
-}
-
-func initProductionMap(productions []yacc_parser.Production) map[string]yacc_parser.Production {
-	productionMap := make(map[string]yacc_parser.Production)
-	for _, production := range productions {
-		if pm, exist := productionMap[production.Head]; exist {
-			pm.Alter = append(pm.Alter, production.Alter...)
-			productionMap[production.Head] = pm
-		}
-		productionMap[production.Head] = production
-	}
-	checkProductionMap(productionMap)
-	return productionMap
-}
-func checkProductionMap(productionMap map[string]yacc_parser.Production) {
-	for _, production := range productionMap {
-		for _, seqs := range production.Alter {
-			for _, seq := range seqs.Items {
-				if _, isLiteral := literal(seq); isLiteral {
-					continue
-				}
-				if _, exist := productionMap[seq]; !exist {
-					panic(fmt.Sprintf("Production '%s' not found", seq))
-				}
-			}
-		}
-	}
-}
-
 var nothing []string
 
-func randomSQL(productionName string, counter map[string]int, ctx *Context) []string {
+func randomSQL(productionName string, ctx *Context) []string {
 	cfg := ctx.randConfig
 	if cfg.replacer.contains(productionName) {
 		return []string{cfg.replacer.run(productionName)}
-	}
-
-	if _, isInBlackList := cfg.strBlackList[productionName]; isInBlackList {
-		return nothing
 	}
 
 	production, exist := ctx.productionMap[productionName]
 	if !exist {
 		panic(fmt.Sprintf("Production '%s' not found", productionName))
 	}
+	production.maxLoop -= 1
 
-	seqs := filterMaxLoopback(production.Alter, counter, cfg.maxLoopback)
+	seqs := filterMaxLoopAndZeroChance(production.bodyList, ctx.productionMap)
 	if len(seqs) == 0 {
 		return nothing
 	}
@@ -189,20 +83,13 @@ func randomSQL(productionName string, counter map[string]int, ctx *Context) []st
 	for _, s := range seqs {
 		var sql []string
 		containsException := false
-		for _, item := range s.Items {
+		for _, item := range s.seq {
 			if literalStr, isLiteral := literal(item); isLiteral {
 				if literalStr != "" {
 					sql = append(sql, literalStr)
 				}
 			} else {
-				var updateFn func(int) int
-				if _, isInWhiteList := cfg.loopBackWhiteList[productionName]; isInWhiteList {
-					updateFn = identity
-				} else {
-					updateFn = increaseInt
-				}
-				updatedCounter := updatedMap(counter, productionName, updateFn)
-				fragment := randomSQL(item, updatedCounter, ctx)
+				fragment := randomSQL(item, ctx)
 				if len(fragment) == 0 {
 					containsException = true
 					break
@@ -218,50 +105,29 @@ func randomSQL(productionName string, counter map[string]int, ctx *Context) []st
 	return nothing
 }
 
-func identity(a int) int {
-	return a
-}
-
-func increaseInt(a int) int {
-	return a + 1
-}
-
-func updatedMap(old map[string]int, key string, updFn func(int) int) map[string]int {
-	ret := make(map[string]int, len(old)+1)
-
-	updated := false
-	for oKey, oValue := range old {
-		if oKey != key {
-			ret[oKey] = oValue
-		} else {
-			ret[key] = updFn(old[key])
-			updated = true
-		}
-	}
-	if !updated {
-		ret[key] = 1
-	}
-	return ret
-}
-
-func randomize(old []yacc_parser.Seq) []yacc_parser.Seq {
+func randomize(old BodyList) BodyList {
 	rand.Seed(time.Now().UnixNano())
 	rand.Shuffle(len(old), func(i, j int) { old[i], old[j] = old[j], old[i] })
 	return old
 }
 
-func filterMaxLoopback(seq []yacc_parser.Seq, counter map[string]int, maxLoopback int) []yacc_parser.Seq {
-	var ret []yacc_parser.Seq
-	for _, v := range seq {
+func filterMaxLoopAndZeroChance(bodyList BodyList, prodMap map[string]*Production) BodyList {
+	var ret BodyList
+	for _, v := range bodyList {
+		if v.randomFactor == 0 {
+			continue
+		}
 		containsExceed := false
-		for _, i := range v.Items {
-			count, ok := counter[i]
-			if !ok {
-				count = 0
-			}
-			if count > maxLoopback {
-				containsExceed = true
-				break
+		for _, i := range v.seq {
+			if _, isLit := literal(i); !isLit {
+				prod, ok := prodMap[i]
+				if !ok {
+					panic(fmt.Sprintf("production %s not found", i))
+				}
+				if prod.maxLoop <= 0 {
+					containsExceed = true
+					break
+				}
 			}
 		}
 		if !containsExceed {

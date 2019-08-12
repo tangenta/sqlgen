@@ -11,7 +11,7 @@ import (
 
 type Production struct {
 	head     string
-	maxLoop	 int
+	maxLoop  int
 	bodyList BodyList
 }
 
@@ -43,7 +43,7 @@ func writeOptNum(sb *strings.Builder, i int) {
 }
 
 type Body = struct {
-	seq []string
+	seq          []string
 	randomFactor int
 }
 
@@ -57,8 +57,8 @@ type Scanner struct {
 
 	q quote
 
-	errs         []error
-	warns        []error
+	errs  []error
+	warns []error
 }
 
 // Errors returns the errors and warns during a scan.
@@ -188,9 +188,9 @@ func (s *Scanner) reset(str string) {
 
 // Parser represents a parser instance. Some temporary objects are stored in it to reduce object allocation during Parse function.
 type Parser struct {
-	result    *Production
-	src       string
-	lexer     Scanner
+	result *Production
+	src    string
+	lexer  Scanner
 
 	// the following fields are used by yyParse to reduce allocation.
 	cache  []yySymType
@@ -198,8 +198,8 @@ type Parser struct {
 	yyVAL  yySymType
 }
 
-// New returns a Parser object.
-func New() *Parser {
+// NewParser returns a Parser object.
+func NewParser() *Parser {
 	return &Parser{
 		cache: make([]yySymType, 200),
 	}
