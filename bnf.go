@@ -23,7 +23,7 @@ func (p *Production) String() string {
 	firstBody := p.bodyList[0]
 	sb.WriteString(strings.Join(firstBody.seq, " "))
 
-	if _, isLit := literal(firstBody.seq[0]); !isLit {
+	if isLiteral(firstBody.seq[0]) {
 		writeOptNum(&sb, firstBody.randomFactor)
 	}
 
@@ -32,7 +32,7 @@ func (p *Production) String() string {
 		sb.WriteString("\n")
 		sb.WriteString("| ")
 		sb.WriteString(strings.Join(body.seq, " "))
-		if _, isLit := literal(firstBody.seq[0]); !isLit {
+		if isLiteral(firstBody.seq[0]) {
 			writeOptNum(&sb, firstBody.randomFactor)
 		}
 	}

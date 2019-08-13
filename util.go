@@ -36,14 +36,15 @@ func buildProdMap(prods []*Production) map[string]*Production {
 	for _, v := range prods {
 		ret[v.head] = v
 	}
+	checkProductionMap(ret)
 	return ret
 }
 
-func checkProductionMap(productionMap map[string]Production) {
+func checkProductionMap(productionMap map[string]*Production) {
 	for _, production := range productionMap {
 		for _, seqs := range production.bodyList {
 			for _, seq := range seqs.seq {
-				if _, isLiteral := literal(seq); isLiteral {
+				if isLiteral(seq) {
 					continue
 				}
 				if _, exist := productionMap[seq]; !exist {
@@ -70,7 +71,7 @@ func breadthFirstSearch(prodName string, prodMap map[string]*Production, visitor
 			resultSet[name] = struct{}{}
 			for _, body := range prod.bodyList {
 				for _, s := range body.seq {
-					if _, isLit := literal(s); !isLit {
+					if isLiteral(s) {
 						pendingSet = append(pendingSet, s)
 					}
 				}
