@@ -2,7 +2,7 @@ package sqlgen
 
 func buildReplacer() *Replacer {
 	r := &Replacer{}
-	r.add("column_def", constStrFn("a int"))
+	//r.add("column_def", constStrFn("a int"))
 	r.add("opt_temporary", constStrFn(""))
 	r.add("bit_expr", constStrFn("3"))
 	return r

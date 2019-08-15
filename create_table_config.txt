@@ -16,10 +16,10 @@ opt_if_not_exists [1]: %empty [1]
 table_ident [1]: 'table_ident'
 
 table_element_list [1]: table_element [1]
-| table_element_list ',' table_element [1]
+| table_element_list ',' table_element [2]
 
 opt_create_table_options_etc [1]: create_table_options opt_create_partitioning_etc [1]
-| opt_create_partitioning_etc [1]
+| opt_create_partitioning_etc [0]
 
 LIKE [1]: 'LIKE'
 
@@ -38,7 +38,7 @@ ident [10]: IDENT_sys [1]
 | ident_keyword [1]
 
 table_element [1]: column_def [1]
-| table_constraint_def [1]
+| column_def ',' table_constraint_def [1]
 
 create_table_options [1]: create_table_option [1]
 | create_table_options opt_comma create_table_option [1]
@@ -62,11 +62,11 @@ ident_keyword [1]: ident_keywords_unambiguous [1]
 column_def [1]: ident field_def opt_references [1]
 
 table_constraint_def [1]: key_or_index opt_index_name_and_type '(' key_list_with_expression ')' opt_index_options [1]
-| FULLTEXT_SYM opt_key_or_index opt_ident '(' key_list_with_expression ')' opt_fulltext_index_options [1]
-| SPATIAL_SYM opt_key_or_index opt_ident '(' key_list_with_expression ')' opt_spatial_index_options [1]
+| FULLTEXT_SYM opt_key_or_index opt_ident '(' key_list_with_expression ')' opt_fulltext_index_options [0]
+| SPATIAL_SYM opt_key_or_index opt_ident '(' key_list_with_expression ')' opt_spatial_index_options [0]
 | opt_constraint_name constraint_key_type opt_index_name_and_type '(' key_list_with_expression ')' opt_index_options [1]
-| opt_constraint_name FOREIGN KEY_SYM opt_ident '(' key_list ')' references [1]
-| opt_constraint_name check_constraint opt_constraint_enforcement [1]
+| opt_constraint_name FOREIGN KEY_SYM opt_ident '(' key_list ')' references [0]
+| opt_constraint_name check_constraint opt_constraint_enforcement [0]
 
 create_table_option [1]: ENGINE_SYM opt_equal ident_or_text [1]
 | SECONDARY_ENGINE_SYM opt_equal NULL_SYM [1]
@@ -126,10 +126,10 @@ ident_keywords_ambiguous_3_roles [1]: 'ident_kw3'
 ident_keywords_ambiguous_4_system_variables [1]: 'ident_kw4'
 
 field_def [1]: type opt_column_attribute_list [1]
-| type opt_collate opt_generated_always AS '(' expr ')' opt_stored_attribute opt_column_attribute_list [1]
+| type opt_collate opt_generated_always AS '(' expr ')' opt_stored_attribute opt_column_attribute_list [0]
 
 opt_references [1]: %empty [1]
-| references [1]
+| references [0]
 
 key_or_index [1]: KEY_SYM [1]
 | INDEX_SYM [1]
@@ -1140,7 +1140,7 @@ type [1]: int_type opt_field_length field_options [1]
 | JSON_SYM [1]
 
 opt_column_attribute_list [1]: %empty [1]
-| column_attribute_list [1]
+| column_attribute_list [0]
 
 opt_collate [1]: %empty [1]
 | COLLATE_SYM collation_name [1]

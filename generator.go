@@ -5,7 +5,6 @@ import (
 	"github.com/pingcap/log"
 	"math/rand"
 	"strings"
-	"time"
 )
 
 type Context struct {
@@ -108,9 +107,34 @@ func appendNonEmpty(strs []string, adding ...string) []string {
 }
 
 func randomize(old BodyList) BodyList {
-	rand.Seed(time.Now().UnixNano())
-	rand.Shuffle(len(old), func(i, j int) { old[i], old[j] = old[j], old[i] })
+	bodyList := old
+	totalFactor := sumRandomFactor(bodyList)
+	for len(bodyList) != 0 {
+		selected := pickOneBodyByRandomFactor(bodyList, totalFactor)
+		bodyList[0], bodyList[selected] = bodyList[selected], bodyList[0]
+		totalFactor -= bodyList[0].randomFactor
+		bodyList = bodyList[1:]
+	}
 	return old
+}
+
+func sumRandomFactor(bodyList BodyList) int {
+	total := 0
+	for _, b := range bodyList {
+		total += b.randomFactor
+	}
+	return total
+}
+
+func pickOneBodyByRandomFactor(bodyList BodyList, totalFactor int) int {
+	randNum := rand.Intn(totalFactor)
+	for idx, b := range bodyList {
+		randNum -= b.randomFactor
+		if randNum < 0 {
+			return idx
+		}
+	}
+	panic("impossible to reach")
 }
 
 func filterMaxLoopAndZeroChance(bodyList BodyList, prodMap map[string]*Production) BodyList {
