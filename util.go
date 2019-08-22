@@ -8,29 +8,6 @@ import (
 	"unicode"
 )
 
-func buildConfigFile(prodName string, prodMap map[string]*Production, filePath string) error {
-	oFile, err := os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
-	if err != nil {
-		return err
-	}
-	_, writeErr := oFile.WriteString(convertOrigin(prodName, prodMap))
-	if writeErr != nil {
-		return writeErr
-	}
-	return nil
-}
-
-func convertOrigin(prodName string, prodMap map[string]*Production) string {
-	var sb strings.Builder
-	visitor := func(p *Production) {
-		sb.WriteString(p.String())
-		sb.WriteString("\n")
-	}
-	_, _ = breadthFirstSearch(prodName, prodMap, visitor)
-
-	return sb.String()
-}
-
 func BuildProdMap(prods []*Production) map[string]*Production {
 	ret := make(map[string]*Production)
 	for _, v := range prods {
@@ -144,4 +121,15 @@ func isWhitespace(str string) bool {
 		}
 	}
 	return true
+}
+
+func literal(token string) (string, bool) {
+	if isLiteral(token) {
+		return strings.Trim(token, "'"), true
+	}
+	return "", false
+}
+
+func isLiteral(token string) bool {
+	return strings.HasPrefix(token, "'") && strings.HasSuffix(token, "'")
 }

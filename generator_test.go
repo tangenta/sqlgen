@@ -1,23 +1,11 @@
 package sqlgen
 
-import (
-	"fmt"
-	"strings"
-	"testing"
-)
+import "testing"
 
-func TestRandomSQL(t *testing.T) {
-	prods, err := ParseYacc("create_table_config.txt")
-	if err != nil {
-		t.Error(err)
-	}
-	ctx := BuildContext(prods, buildReplacer())
-	//_ = RandomSQLStr("create_table_stmt", ctx)
-	//_ = RandomSQLStr("create_table_stmt", ctx)
-	//ss := RandomSQLStr("create_table_stmt", ctx)
-	//fmt.Println(strings.Join(ss, " "))
-	for i := 0; i < 10; i++ {
-		ss := RandomSQLStr("create_table_stmt", ctx)
-		fmt.Println(strings.Join(ss, " "))
-	}
+func TestNewGenerator(t *testing.T) {
+	buildFile("sample_bnf.txt", "AlterTableStmt", "sample",".")
+}
+
+func TestFullGenerator(t *testing.T) {
+	buildFile("mysql80_bnf_complete.txt", "alter_table_stmt", "alter", ".")
 }

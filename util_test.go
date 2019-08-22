@@ -6,19 +6,6 @@ import (
 	"testing"
 )
 
-func TestBuildConfigFile(t *testing.T) {
-	p, err := ParseYacc("mysql80_bnf_complete.txt")
-	if err != nil {
-		t.Error(err)
-	}
-	prodMap := BuildProdMap(p)
-	output := "create_table_config.txt"
-	err = buildConfigFile("create_table_stmt", prodMap, output)
-	if err != nil {
-		t.Error(err)
-	}
-}
-
 func TestBreadthFirstSearch(t *testing.T) {
 	p, err := ParseYacc("mysql80_bnf_complete.txt")
 	if err != nil {
