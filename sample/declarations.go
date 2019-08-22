@@ -1,4 +1,4 @@
 package sample
-var AlterTableStmt Fn
+var start Fn
 var a Fn
 var b Fn

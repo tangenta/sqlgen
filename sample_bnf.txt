@@ -1,4 +1,4 @@
-AlterTableStmt: a
+start: a
 | b
 
 a: 'A'

@@ -8,9 +8,9 @@ import (
 var Generate = generate()
 
 func generate() func()string {
-	initState("/home/tangenta/go/src/github.com/tangenta/sqlgen/sample_bnf.txt", "AlterTableStmt")
+	initState("/home/tangenta/go/src/github.com/tangenta/sqlgen/sample_bnf.txt", "start")
 retFn := func() string {
-	res := AlterTableStmt.f()
+	res := start.f()
 	switch res.Tp {
 	case PlainString:
 		return res.Value
@@ -18,7 +18,7 @@ retFn := func() string {
 		log.Println("Invalid SQL")
 		return ""
 	case NonExist:
-		log.Fatalf("Production '%s' not found", AlterTableStmt.name)
+		log.Fatalf("Production '%s' not found", start.name)
 	default:
 		log.Fatalf("Unsupported result type '%v'", res.Tp)
 	}
@@ -26,8 +26,8 @@ retFn := func() string {
 }
 
 
-AlterTableStmt = Fn {
-	name: "AlterTableStmt",
+start = Fn {
+	name: "start",
 	f: func() Result {
 		return random(a, Or, 
 			b, 
