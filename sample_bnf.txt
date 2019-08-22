@@ -1,0 +1,6 @@
+AlterTableStmt: a
+| b
+
+a: 'A'
+
+b: 'B'

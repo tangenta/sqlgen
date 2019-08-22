@@ -42,7 +42,7 @@ const (
 	yyEOFCode  = 57344
 	Colon      = 57346
 	LeftBr     = 57348
-	Or         = 57347
+	OrBranch   = 57347
 	RightBr    = 57349
 	yyErrCode  = 57345
 	identifier = 57350
@@ -56,7 +56,7 @@ var (
 	yyXLAT = map[int]int{
 		57344: 0,  // $end (10x)
 		57350: 1,  // identifier (8x)
-		57347: 2,  // Or (8x)
+		57347: 2,  // OrBranch (8x)
 		57348: 3,  // LeftBr (5x)
 		57346: 4,  // Colon (3x)
 		57355: 5,  // NumberOpt (3x)
@@ -73,7 +73,7 @@ var (
 	yySymNames = []string{
 		"$end",
 		"identifier",
-		"Or",
+		"OrBranch",
 		"LeftBr",
 		"Colon",
 		"NumberOpt",
@@ -192,7 +192,7 @@ ret1:
 	return 1
 
 yystack:
-	/* put a state and value onto the stack */
+	/* put a state and Value onto the stack */
 	yyp++
 	if yyp >= len(yyS) {
 		nyys := make([]yySymType, len(yyS)*2)
@@ -386,5 +386,5 @@ yynewstate:
 	if yyEx != nil && yyEx.Reduced(r, exState, &parser.yyVAL) {
 		return -1
 	}
-	goto yystack /* stack new state and value */
+	goto yystack /* stack new state and Value */
 }

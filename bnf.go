@@ -108,7 +108,7 @@ func (s *Scanner) UnreadRune() error {
 	}
 }
 
-// Lex returns a token and store the token value in v.
+// Lex returns a token and store the token Value in v.
 // Scanner satisfies yyLexer interface.
 // 0 and invalid are special token id this function would return:
 // return 0 tells parser that scanner meets EOF,
@@ -137,7 +137,7 @@ func (s *Scanner) Lex(v *yySymType) int {
 			return Colon
 		} else if r == '|' {
 			v.ident = "|"
-			return Or
+			return OrBranch
 		} else if r == '[' {
 			v.ident = "["
 			return LeftBr

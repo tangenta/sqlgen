@@ -38,7 +38,7 @@ import (
 
 %token	<item>
 	Colon
-	Or
+	OrBranch
 	LeftBr
 	RightBr
 
@@ -73,7 +73,7 @@ BodyList:
 		body.randomFactor = $2.(int)
 		$$ = BodyList{body}
 	}
-|	BodyList Or Body NumberOpt
+|	BodyList OrBranch Body NumberOpt
 	{
 		body := $3.(Body)
         	body.randomFactor = $4.(int)

@@ -7,13 +7,18 @@ import (
 	"strings"
 )
 
+var debugMode = false
+
 type Context struct {
 	productionMap map[string]*Production
 	replacer      *Replacer
+	trace         []string
 }
 
 type Replacer struct {
-	s map[string]func() string
+	replacerCtx   *Context
+	s             map[string]func() string
+	resetCallback func()
 }
 
 func (r *Replacer) add(str string, strSupplier func() string) {
@@ -36,29 +41,67 @@ func (r *Replacer) run(str string) string {
 	}
 	return fn()
 }
+func (r *Replacer) reset() {
+	if r.resetCallback != nil {
+		r.resetCallback()
+	}
+}
+func (r *Replacer) chainResetCallback(fn func()) {
+	if r.resetCallback == nil {
+		r.resetCallback = fn
+	}
+	oldCallback := r.resetCallback
+	r.resetCallback = func() {
+		oldCallback()
+		fn()
+	}
+}
+
+type Counter struct {
+	c map[string]int
+}
+
+func (c *Counter) increase(prodName string) {
+	c.c[prodName] = c.c[prodName] + 1
+}
+func (c *Counter) decrease(prodName string) {
+	c.c[prodName] = c.c[prodName] - 1
+}
+func (c *Counter) clone() *Counter {
+	ret := make(map[string]int, len(c.c))
+	for k, v := range c.c {
+		ret[k] = v
+	}
+	return &Counter{ret}
+}
+func (c *Counter) count(prodName string) int {
+	return c.c[prodName]
+}
 
 func RandomSQLStr(productionName string, ctx *Context) []string {
-	counter := make(map[string]int)
-	defer func() {
-		for key, count := range counter {
-			ctx.productionMap[key].maxLoop += count
-		}
-	}()
+	counter := &Counter{make(map[string]int)}
+	defer ctx.replacer.reset()
 	return randomSQLStr(productionName, ctx, counter)
 }
 
-func randomSQLStr(productionName string, ctx *Context, counter map[string]int) []string {
+func randomSQLStr(productionName string, ctx *Context, counter *Counter) []string {
+	if debugMode {
+		ctx.trace = append(ctx.trace, productionName)
+		fmt.Printf("%v\n", ctx.trace)
+	}
+
 	if ctx.replacer.contains(productionName) {
 		return []string{ctx.replacer.run(productionName)}
 	}
 
 	production := findProductionUnwrap(ctx.productionMap, productionName)
-	production.maxLoop -= 1
-	counter[productionName] += 1
 
-	seqs := filterMaxLoopAndZeroChance(production.bodyList, ctx.productionMap)
+	seqs := filterMaxLoopAndZeroChance(production.bodyList, ctx.productionMap, counter)
 	if len(seqs) == 0 {
-		log.Debug("exiting from " + productionName)
+		log.Warn("No available branch of '" + productionName + "' left")
+		if debugMode {
+			ctx.trace = ctx.trace[:len(ctx.trace)-1]
+		}
 		return nil
 	}
 	seqs = randomize(seqs)
@@ -66,6 +109,10 @@ func randomSQLStr(productionName string, ctx *Context, counter map[string]int) [
 		sql := generateBody(s, ctx, counter)
 		if sql != nil {
 			return sql
+		} else {
+			if debugMode {
+				ctx.trace = ctx.trace[:len(ctx.trace)-len(s.seq)]
+			}
 		}
 	}
 	return nil
@@ -79,18 +126,20 @@ func findProductionUnwrap(prodMap map[string]*Production, name string) *Producti
 	return production
 }
 
-func generateBody(body Body, ctx *Context, counter map[string]int) []string {
+func generateBody(body Body, ctx *Context, counter *Counter) []string {
 	sql := []string{}
+	var recordProds []string
 	for _, s := range body.seq {
 		if literalStr, isLiteral := literal(s); isLiteral {
 			sql = appendNonEmpty(sql, literalStr)
 		} else {
-			fragment := randomSQLStr(s, ctx, counter)
+			fragment := randomSQLStr(s, ctx, counter.clone())
 			if fragment == nil {
-				log.Debug("encounter nil for " + s)
+				log.Warn("encounter nil for " + s)
 				return nil
 			} else {
 				sql = appendNonEmpty(sql, fragment...)
+				recordProds = append(recordProds, s)
 			}
 		}
 	}
@@ -137,10 +186,10 @@ func pickOneBodyByRandomFactor(bodyList BodyList, totalFactor int) int {
 	panic("impossible to reach")
 }
 
-func filterMaxLoopAndZeroChance(bodyList BodyList, prodMap map[string]*Production) BodyList {
+func filterMaxLoopAndZeroChance(bodyList BodyList, prodMap map[string]*Production, counter *Counter) BodyList {
 	var ret BodyList
 	for _, body := range bodyList {
-		if isZeroChance(body) || reachMaxLoop(body, prodMap) {
+		if isZeroChance(body) || reachMaxLoop(body, prodMap, counter) {
 			continue
 		}
 		ret = append(ret, body)
@@ -148,7 +197,7 @@ func filterMaxLoopAndZeroChance(bodyList BodyList, prodMap map[string]*Productio
 	return ret
 }
 
-func reachMaxLoop(body Body, prodMap map[string]*Production) bool {
+func reachMaxLoop(body Body, prodMap map[string]*Production, counter *Counter) bool {
 	for _, s := range body.seq {
 		if isLiteral(s) {
 			continue
@@ -157,7 +206,7 @@ func reachMaxLoop(body Body, prodMap map[string]*Production) bool {
 		if !ok {
 			panic(fmt.Sprintf("production %s not found", s))
 		}
-		if prod.maxLoop <= 0 {
+		if counter.count(s) > prod.maxLoop {
 			return true
 		}
 	}

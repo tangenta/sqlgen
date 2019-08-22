@@ -31,7 +31,7 @@ func convertOrigin(prodName string, prodMap map[string]*Production) string {
 	return sb.String()
 }
 
-func buildProdMap(prods []*Production) map[string]*Production {
+func BuildProdMap(prods []*Production) map[string]*Production {
 	ret := make(map[string]*Production)
 	for _, v := range prods {
 		ret[v.head] = v
@@ -71,7 +71,7 @@ func breadthFirstSearch(prodName string, prodMap map[string]*Production, visitor
 			resultSet[name] = struct{}{}
 			for _, body := range prod.bodyList {
 				for _, s := range body.seq {
-					if isLiteral(s) {
+					if !isLiteral(s) {
 						pendingSet = append(pendingSet, s)
 					}
 				}
@@ -86,7 +86,7 @@ func breadthFirstSearch(prodName string, prodMap map[string]*Production, visitor
 	return resultSet, nil
 }
 
-func parseYacc(yaccFilePath string) ([]*Production, error) {
+func ParseYacc(yaccFilePath string) ([]*Production, error) {
 	file, err := os.Open(yaccFilePath)
 	if err != nil {
 		return nil, err
